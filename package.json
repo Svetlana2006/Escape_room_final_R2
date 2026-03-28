@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "deploy": "gh-pages -d public -r https://github.com/Svetlana2006/Escape_room_final_R2.git"
+    "deploy": "node scripts/deploy.mjs"
   },
   "engines": {
     "node": ">=18"
