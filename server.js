@@ -10,6 +10,7 @@ const publicDir = path.join(__dirname, "public");
 const dataDir = path.join(__dirname, "data");
 const submissionsFile = path.join(dataDir, "submissions.json");
 
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
 const ACCEPTED_LAST_ANSWERS = new Set([
   "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u093e\u091a\u093e\u0930 \u0915\u0947\u0902\u0926\u094d\u0930",
@@ -39,6 +40,14 @@ let writeQueue = Promise.resolve();
 
 const server = http.createServer(async (req, res) => {
   try {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     if (!req.url) {
       sendJson(res, 400, { error: "Request URL is missing." });
       return;
@@ -78,9 +87,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, async () => {
+server.listen(PORT, HOST, async () => {
   await ensureStore();
-  console.log(`Escape room server listening on http://localhost:${PORT}`);
+  console.log(`Escape room server listening on http://${HOST}:${PORT}`);
 });
 
 async function handleSessionStart(req, res) {
@@ -352,6 +361,12 @@ function escapeHtmlText(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function formatExactTimestamp(value) {

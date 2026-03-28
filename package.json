@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "deploy": "gh-pages -d public -r https://github.com/Svetlana2006/Escape_room_final_R2.git"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
-

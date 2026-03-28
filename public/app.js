@@ -1,4 +1,5 @@
 const app = document.getElementById("app");
+const API_BASE_URL = window.ESCAPE_ROOM_CONFIG?.apiBaseUrl || window.location.origin;
 
 const storageKeys = {
   adminToken: "escape-room-admin-token",
@@ -263,7 +264,7 @@ async function handleLoginSubmit(event) {
   render();
 
   try {
-    const response = await fetch("/api/session/start", {
+    const response = await fetch(apiUrl("/api/session/start"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -318,7 +319,7 @@ async function handleAnswerSubmit(event) {
   render();
 
   try {
-    const response = await fetch("/api/session/answer", {
+    const response = await fetch(apiUrl("/api/session/answer"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -366,7 +367,7 @@ async function loadDashboard(showRefreshMessage = false) {
   }
 
   try {
-    const response = await fetch("/api/admin/submissions", {
+    const response = await fetch(apiUrl("/api/admin/submissions"), {
       headers: { Authorization: `Bearer ${state.adminToken}` },
     });
 
@@ -388,7 +389,7 @@ async function loadDashboard(showRefreshMessage = false) {
 
 async function exportDashboard() {
   try {
-    const response = await fetch("/api/admin/export", {
+    const response = await fetch(apiUrl("/api/admin/export"), {
       headers: { Authorization: `Bearer ${state.adminToken}` },
     });
 
@@ -473,4 +474,8 @@ function escapeHtml(value) {
 
 function cleanFeedback(value) {
   return value.replace(/^error:\s*/i, "");
+}
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
 }
