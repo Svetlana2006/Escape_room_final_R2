@@ -1,10 +1,7 @@
 import { spawnSync } from "node:child_process";
-import path from "node:path";
+import ghpages from "gh-pages";
 
 const REPO_URL = "https://github.com/Svetlana2006/Escape_room_final_R2.git";
-const GH_PAGES_BIN = process.platform === "win32"
-  ? path.resolve("node_modules", ".bin", "gh-pages.cmd")
-  : path.resolve("node_modules", ".bin", "gh-pages");
 const branch = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { capture: true }).trim();
 
 if (branch !== "main") {
@@ -21,7 +18,7 @@ console.log("Pushing main to GitHub for Render auto-deploy...");
 run("git", ["push", "origin", "main"]);
 
 console.log("Publishing public/ to gh-pages...");
-run(GH_PAGES_BIN, ["-d", "public", "-r", REPO_URL]);
+await publishPages();
 
 console.log("Deploy finished.");
 console.log("Render will auto-deploy the pushed main commit if Auto-Deploy is enabled for the service.");
@@ -43,6 +40,25 @@ function run(command, args, options = {}) {
   }
 
   return result.stdout || "";
+}
+
+function publishPages() {
+  return new Promise((resolve, reject) => {
+    ghpages.publish(
+      "public",
+      {
+        repo: REPO_URL,
+      },
+      (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      }
+    );
+  }).catch((error) => fail(error.message || "gh-pages publish failed."));
 }
 
 function fail(message) {
