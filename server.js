@@ -13,8 +13,14 @@ const submissionsFile = path.join(dataDir, "submissions.json");
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
 const ACCEPTED_LAST_ANSWERS = new Set([
-  "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u093e\u091a\u093e\u0930 \u0915\u0947\u0902\u0926\u094d\u0930",
-  "C:\\Users\\Svetlana\\ESCAPE_ROOM_Round2",
+  "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u091a\u094d\u0930\u093e\u0930 \u0915\u0947\u0902\u0926\u094d\u0930", // This was an old attempt, I should just use the actual string.
+  "संकुल नवप्रवर्तन केंद्र",
+  "संकूल नवप्रवर्तन केंद्र",
+  "संकुल नवप्रवर्तन केन्द्र",
+  "संकूल नवप्रवर्तन केन्द्र"
+]);
+const ACCEPTED_KEYS = new Set([
+  "I HAVE BEEN WATCHING YOU",
 ]);
 const ADMIN_CREDENTIALS = {
   teamName: "admin",
@@ -62,6 +68,11 @@ const server = http.createServer(async (req, res) => {
 
     if (requestUrl.pathname === "/api/session/answer" && req.method === "POST") {
       await handleAnswerSubmit(req, res);
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/session/key" && req.method === "POST") {
+      await handleKeySubmit(req, res);
       return;
     }
 
@@ -129,6 +140,10 @@ async function handleSessionStart(req, res) {
     durationToSolveMs: null,
     answerCorrect: false,
     finalAnswer: null,
+    keyAttemptAtMs: null,
+    keySolvedAtMs: null,
+    keyCorrect: false,
+    finalKey: null,
   };
 
   await mutateStore((store) => {
@@ -202,6 +217,66 @@ async function handleAnswerSubmit(req, res) {
   sendJson(res, outcome.status, outcome.payload);
 }
 
+async function handleKeySubmit(req, res) {
+  const body = await readJson(req);
+  const sessionId = normalizeText(body.sessionId);
+  const key = normalizeAnswer(body.key);
+
+  if (!sessionId || !key) {
+    sendJson(res, 400, { error: "Session and key are required." });
+    return;
+  }
+
+  let outcome = null;
+
+  await mutateStore((store) => {
+    const submission = store.submissions.find((entry) => entry.id === sessionId);
+
+    if (!submission) {
+      outcome = { status: 404, payload: { error: "Session not found." } };
+      return store;
+    }
+
+    if (!submission.answerCorrect) {
+      outcome = { status: 400, payload: { error: "Please solve the required puzzles first." } };
+      return store;
+    }
+
+    const now = Date.now();
+
+    if (!submission.keyAttemptAtMs) {
+      submission.keyAttemptAtMs = now;
+    }
+
+    // Convert keys to standard checking format in JS, just using has()
+    // Normalizing text will be the same as answers
+    if (ACCEPTED_KEYS.has(key.toUpperCase())) {
+      submission.keyCorrect = true;
+      submission.finalKey = key;
+      submission.keySolvedAtMs = now;
+      outcome = {
+        status: 200,
+        payload: {
+          success: true,
+          keySolvedAtMs: submission.keySolvedAtMs,
+        },
+      };
+      return store;
+    }
+
+    submission.finalKey = key;
+    outcome = {
+      status: 400,
+      payload: {
+        error: "That key does not work.",
+      },
+    };
+    return store;
+  });
+
+  sendJson(res, outcome.status, outcome.payload);
+}
+
 async function handleAdminSubmissions(req, res) {
   if (!isAuthorizedAdmin(req)) {
     sendJson(res, 401, { error: "Unauthorized." });
@@ -235,6 +310,10 @@ async function handleAdminExport(req, res) {
           <td>${escapeHtmlText(submission.durationToSolveMs ?? "")}</td>
           <td>${escapeHtmlText(submission.answerCorrect ? "Yes" : "No")}</td>
           <td>${escapeHtmlText(submission.finalAnswer ?? "")}</td>
+          <td>${escapeHtmlText(formatExactTimestamp(submission.keyAttemptAtMs))}</td>
+          <td>${escapeHtmlText(formatExactTimestamp(submission.keySolvedAtMs))}</td>
+          <td>${escapeHtmlText(submission.keyCorrect ? "Yes" : "No")}</td>
+          <td>${escapeHtmlText(submission.finalKey ?? "")}</td>
         </tr>
       `
     )
@@ -261,6 +340,10 @@ async function handleAdminExport(req, res) {
           <th>Duration To Solve (ms)</th>
           <th>Answer Correct</th>
           <th>Final Answer</th>
+          <th>Key Attempt Time</th>
+          <th>Key Solved Time</th>
+          <th>Key Correct</th>
+          <th>Final Key</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
