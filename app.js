@@ -13,6 +13,7 @@ const state = {
   pending: false,
   loginMessage: "",
   answerMessage: "",
+  keyMessage: "",
   sessionId: "",
   adminToken: "",
   prompt: "Enter the final answer exactly as your team discovered it.",
@@ -43,7 +44,7 @@ function restoreState() {
   if (sessionId) {
     state.sessionId = sessionId;
     state.playerTimes = playerTimes ? JSON.parse(playerTimes) : null;
-    state.view = playerState === "success" ? "success" : "player";
+    state.view = ["success", "key"].includes(playerState) ? playerState : "player";
   }
 }
 
@@ -72,6 +73,7 @@ function render() {
 function renderView() {
   if (state.view === "admin") return renderAdmin();
   if (state.view === "player") return renderPlayerQuestion();
+  if (state.view === "key") return renderKeyQuestion();
   if (state.view === "success") return renderSuccess();
   return renderLogin();
 }
@@ -130,8 +132,77 @@ function renderPlayerQuestion() {
           ${state.pending ? "Recording..." : "Seal The Answer"}
         </button>
       </form>
-      <p class="feedback ${state.answerMessage.startsWith("error:") ? "error" : ""}">
+      <p class="feedback ${state.answerMessage.startsWith('error:') ? 'error' : ''}">
         ${escapeHtml(cleanFeedback(state.answerMessage))}
+      </p>
+    </section>
+  `;
+}
+
+function renderKeyQuestion() {
+  return `
+    <section class="panel glass-panel" style="max-width: 600px;">
+      <div class="panel-heading">
+        <div class="gate-label">Final Interrogation</div>
+        <h2>Review The Transcript</h2>
+        <p>A fragmented recording was recovered. Read it carefully.</p>
+      </div>
+      <div class="transcript-box" style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; margin-bottom: 1.5rem; border-left: 2px solid cyan; text-align: left; line-height: 1.4;">CASE FILE: 44-D
+Recording Begins
+
+Officer: Where were you last night?
+Suspect: There are moments you don’t realize you’re being seen.
+Officer: Answer properly.
+Suspect: It’s already too late for proper answers.
+Officer: A man was killed at 9 PM.
+Suspect: What matters isn’t when… it’s how long.
+Officer: No one entered the room.
+Suspect: He believed that too.
+Officer: Then how did it happen?
+Suspect: Ask yourself what you missed.
+Officer: Missed what?
+Suspect: Very small things tend to matter most.
+Officer: You’re not helping.
+Suspect: Everything I say is help.
+Officer: Did you know the victim?
+Suspect: Not the way you understand knowing.
+Officer: Then how?
+Suspect: Guessing won’t get you there.
+Officer: Stop speaking in riddles.
+Suspect: Because you’re not ready for clarity.
+Officer: Try me.
+Suspect: Even now, you’re ignoring the obvious.
+Officer: What obvious thing?
+Suspect: Eyes tend to look outward, not inward.
+Officer: What are you implying?
+Suspect: Once you see it, it’s hard to breathe.
+Officer: See what?
+Suspect: Until then, it stays simple.
+Officer: Simple how?
+Suspect: He thought he was alone.
+Officer: And?
+Suspect: And that was his mistake.
+Officer: You’re enjoying this.
+Suspect: In a way, yes.
+Officer: Why?
+Suspect: Now you’re starting to understand.
+Officer: Understand what?
+Suspect: You’re closer than you think.
+Officer: Closer to what?
+Suspect: Every answer you need is already here.
+
+Recording Ends</div>
+      <form id="key-form" class="stack-form">
+        <label>
+          <span>Extract the Key</span>
+          <input name="key" type="text" placeholder="Enter the key..." autocomplete="off" required />
+        </label>
+        <button class="action-button" type="submit" ${state.pending ? "disabled" : ""}>
+          ${state.pending ? "Verifying..." : "Submit Key"}
+        </button>
+      </form>
+      <p class="feedback ${state.keyMessage.startsWith('error:') ? 'error' : ''}">
+        ${escapeHtml(cleanFeedback(state.keyMessage))}
       </p>
     </section>
   `;
@@ -141,6 +212,7 @@ function renderSuccess() {
   const loggedIn = state.playerTimes?.loggedInAtMs ? formatExactTimestamp(state.playerTimes.loggedInAtMs) : "Recorded";
   const firstAttempt = state.playerTimes?.firstAnswerAttemptAtMs ? formatExactTimestamp(state.playerTimes.firstAnswerAttemptAtMs) : "Recorded";
   const solvedAt = state.playerTimes?.solvedAtMs ? formatExactTimestamp(state.playerTimes.solvedAtMs) : "Recorded";
+  const keySolvedAt = state.playerTimes?.keySolvedAtMs ? formatExactTimestamp(state.playerTimes.keySolvedAtMs) : "Recorded";
 
   return `
     <section class="panel success-panel">
@@ -157,8 +229,12 @@ function renderSuccess() {
           <strong>${escapeHtml(String(firstAttempt))}</strong>
         </article>
         <article class="metric-card">
-          <span>Solved</span>
+          <span>Puzzle Solved</span>
           <strong>${escapeHtml(String(solvedAt))}</strong>
+        </article>
+        <article class="metric-card">
+          <span>Key Verified</span>
+          <strong>${escapeHtml(String(keySolvedAt))}</strong>
         </article>
       </div>
       <button id="reset-player" class="ghost-button" type="button">Start A New Entry</button>
@@ -215,6 +291,10 @@ function renderAdmin() {
               <th>Solved Date And Time</th>
               <th>Answer</th>
               <th>Correct</th>
+              <th>Key Attempted</th>
+              <th>Key Solved</th>
+              <th>Key Correct</th>
+              <th>Final Key</th>
             </tr>
           </thead>
           <tbody>
@@ -233,11 +313,15 @@ function renderAdmin() {
                           <td>${escapeHtml(formatExactTimestamp(item.solvedAtMs))}</td>
                           <td>${escapeHtml(item.finalAnswer || "-")}</td>
                           <td>${item.answerCorrect ? "Yes" : "No"}</td>
+                          <td>${escapeHtml(formatExactTimestamp(item.keyAttemptAtMs))}</td>
+                          <td>${escapeHtml(formatExactTimestamp(item.keySolvedAtMs))}</td>
+                          <td>${item.keyCorrect ? "Yes" : "No"}</td>
+                          <td>${escapeHtml(item.finalKey || "-")}</td>
                         </tr>
                       `
                     )
                     .join("")
-                : `<tr><td colspan="9" class="empty-state">No submissions yet.</td></tr>`
+                : `<tr><td colspan="13" class="empty-state">No submissions yet.</td></tr>`
             }
           </tbody>
         </table>
@@ -249,6 +333,7 @@ function renderAdmin() {
 function bindEvents() {
   document.getElementById("login-form")?.addEventListener("submit", handleLoginSubmit);
   document.getElementById("answer-form")?.addEventListener("submit", handleAnswerSubmit);
+  document.getElementById("key-form")?.addEventListener("submit", handleKeySubmit);
   document.getElementById("refresh-dashboard")?.addEventListener("click", () => loadDashboard(true));
   document.getElementById("export-dashboard")?.addEventListener("click", exportDashboard);
   document.getElementById("logout-admin")?.addEventListener("click", logoutAdmin);
@@ -298,6 +383,7 @@ async function handleLoginSubmit(event) {
     state.prompt = payload.prompt;
     state.loginMessage = "";
     state.answerMessage = "";
+    state.keyMessage = "";
     state.playerTimes = { loggedInAtMs: payload.loggedInAtMs };
     sessionStorage.setItem(storageKeys.sessionId, payload.sessionId);
     sessionStorage.setItem(storageKeys.playerState, "player");
@@ -343,18 +429,61 @@ async function handleAnswerSubmit(event) {
     }
 
     state.pending = false;
-    state.view = "success";
+    state.view = "key";
     state.playerTimes = {
       loggedInAtMs: payload.loggedInAtMs,
       firstAnswerAttemptAtMs: payload.firstAnswerAttemptAtMs,
       solvedAtMs: payload.solvedAtMs,
+    };
+    sessionStorage.setItem(storageKeys.playerState, "key");
+    sessionStorage.setItem(storageKeys.playerTimes, JSON.stringify(state.playerTimes));
+    render();
+  } catch (error) {
+    state.pending = false;
+    state.answerMessage = `error: ${error.message}`;
+    render();
+  }
+}
+
+async function handleKeySubmit(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+
+  state.pending = true;
+  state.keyMessage = "";
+  render();
+
+  try {
+    const response = await fetch(apiUrl("/api/session/key"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: state.sessionId,
+        key: form.get("key"),
+      }),
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      state.pending = false;
+      state.keyMessage = `error: ${payload.error || "That key is incorrect."}`;
+      render();
+      return;
+    }
+
+    state.pending = false;
+    state.view = "success";
+    state.playerTimes = {
+      ...state.playerTimes,
+      keySolvedAtMs: payload.keySolvedAtMs,
     };
     sessionStorage.setItem(storageKeys.playerState, "success");
     sessionStorage.setItem(storageKeys.playerTimes, JSON.stringify(state.playerTimes));
     render();
   } catch (error) {
     state.pending = false;
-    state.answerMessage = `error: ${error.message}`;
+    state.keyMessage = `error: ${error.message}`;
     render();
   }
 }
