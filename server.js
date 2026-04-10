@@ -14,10 +14,10 @@ const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
 const ACCEPTED_LAST_ANSWERS = new Set([
   "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u091a\u094d\u0930\u093e\u0930 \u0915\u0947\u0902\u0926\u094d\u0930", // This was an old attempt, I should just use the actual string.
-  "संकुल नवप्रवर्तन केंद्र",
-  "संकूल नवप्रवर्तन केंद्र",
-  "संकुल नवप्रवर्तन केन्द्र",
-  "संकूल नवप्रवर्तन केन्द्र"
+  "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u092a\u094d\u0930\u0935\u0930\u094d\u0924\u0928 \u0915\u0947\u0902\u0926\u094d\u0930",
+  "\u0938\u0902\u0915\u0942\u0932 \u0928\u0935\u092a\u094d\u0930\u0935\u0930\u094d\u0924\u0928 \u0915\u0947\u0902\u0926\u094d\u0930",
+  "\u0938\u0902\u0915\u0941\u0932 \u0928\u0935\u092a\u094d\u0930\u0935\u0930\u094d\u0924\u0928 \u0915\u0947\u0928\u094d\u0926\u094d\u0930",
+  "\u0938\u0902\u0915\u0942\u0932 \u0928\u0935\u092a\u094d\u0930\u0935\u0930\u094d\u0924\u0928 \u0915\u0947\u0928\u094d\u0926\u094d\u0930"
 ]);
 const ACCEPTED_KEYS = new Set([
   "I HAVE BEEN WATCHING YOU",
